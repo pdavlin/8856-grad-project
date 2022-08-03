@@ -1,3 +1,10 @@
+/**
+ * Convenience wrapper for CouchDB functions.
+ * ADAPTED FROM https://github.com/keroxp/deno-couchdb
+ * additions: getView() function, on line 552, 
+ *   to correspond with the CouchDB application.
+ */
+
 import Reader = Deno.Reader;
 import Buffer = Deno.Buffer;
 import copy = Deno.copy;

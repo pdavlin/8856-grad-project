@@ -4,6 +4,8 @@ import { employeeInput, companyInput, worksInput } from "./input.ts";
 
 serve(handler, { port: 80 });
 
+// define types of data, for safety.
+
 type Employee = {
   firstName: string;
   lastName: string;
@@ -31,12 +33,14 @@ type EmploymentInfo = {
   data: Employee | Company | Works;
 };
 
+// establish connection to database.
+// This isn't very secure but the db is proxied from the host system, so should be *relatively* safe.
 const couch = new CouchClient("http://couch:5984", {
   basicAuth: { username: "admin", password: "secret" },
 });
 
+// Handle incoming requests based on path.
 async function handler(req: Request): Promise<Response> {
-  console.log("got a request!");
   const url = new URL(req.url);
   console.log(`${req.method} ${url.pathname}`);
   if (url.pathname === "/v1/couch/separate/create") {
@@ -68,12 +72,12 @@ async function handler(req: Request): Promise<Response> {
   }
 }
 
+// Create a single table to hold all objects.
 async function createTables() {
   let response = "";
   await ["employment"].forEach(async (tableName) => {
     if (!(await couch.databaseExists(tableName))) {
       couch.createDatabase(tableName).catch((error) => {
-        console.log("oof");
         console.error(error);
       });
     }
@@ -86,6 +90,7 @@ async function createTables() {
   });
 }
 
+// insert three different tpes of data based on input type.
 async function insertData() {
   let db = couch.database<EmploymentInfo>("employment");
   for (let input of employeeInput) {
@@ -117,6 +122,10 @@ async function insertData() {
   });
 }
 
+/**
+ * Perform functions on data view by hand to get results of query 1.
+ * @returns Response()
+ */
 async function q1() {
   const db = couch.database<EmploymentInfo>("employment");
   const empLnk = parseResults(await db.getView("employees", "employees-lnk"));
@@ -146,6 +155,10 @@ async function q1() {
   );
 }
 
+/**
+ * Perform functions on data view by hand to get results of query 2.
+ * @returns Response()
+ */
 async function q2() {
   const db = couch.database<EmploymentInfo>("employment");
   const emps = parseResults(await db.getView("employees", "employee-lives"));
@@ -181,27 +194,15 @@ async function q2() {
   );
 }
 
+/**
+ * Helper function to parse results from the HTTP response.
+ * @param response HTTP response from CouchDB.
+ * @returns key values from response.
+ */
 function parseResults(response) {
   return response.rows.map((row) => row.key);
 }
 
-async function queryEmployees(selector, fields) {
-  let db = couch.database<Employee>("employees");
-  const result = await db.find(selector, { fields: fields });
-  return result;
-}
-
-async function queryWorks(selector, fields) {
-  db = couch.database<Works>("works");
-  const result = await db.find(selector, { fields: fields });
-  return result;
-}
-
-async function queryCompanies(selector, fields) {
-  db = couch.database<Company>("companies");
-  const result = await db.find(selector, { fields: fields });
-  return result;
-}
 
 async function combinedCreateTables() {
   let response = "";
@@ -226,6 +227,7 @@ async function combinedInsertData() {
   for (let input of employeeInput) {
     const result = await db.insert(input);
   }
+  // find any locations where employee already exists, and update those rows.
   for (let input of worksInput) {
     console.log(`finding ${input.lastName}`);
     const { id, rev, record } = parseKVResults(
@@ -235,6 +237,7 @@ async function combinedInsertData() {
     record.salary = input.salary;
     await db.put(id, record, { rev });
   }
+  // find any locations where company name already exists, and update those rows.
   for (let input of companyInput) {
     console.log(`finding ${input.companyName}`);
     const { rows } = await db.getView(
@@ -257,6 +260,11 @@ async function combinedInsertData() {
   });
 }
 
+/**
+ * Helper function to parse broader results from the HTTP response.
+ * @param response HTTP response from CouchDB.
+ * @returns key values from response.
+ */
 function parseKVResults(response) {
   return response.rows[0].value;
 }
