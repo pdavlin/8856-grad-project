@@ -7,7 +7,6 @@ services:
       - traefik_public
       - couch_public
     labels:
-      # - "traefik.http.routers.ptag.rule=Host(`api.davlin.io`) && PathPrefix(`/v1/ptag`)"
       - "traefik.http.routers.couchdbbackend.rule=Host(`api.davlin.io`) && Method(`GET`, `POST`) && PathPrefix(`/v1/couch`)"
       - "traefik.docker.network=traefik_public"
       - "traefik.http.services.couchdbbackend.loadbalancer.server.port=80"
